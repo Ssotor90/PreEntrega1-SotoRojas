@@ -1,23 +1,67 @@
 import express from 'express';
-import ProductManager from '../class/productManager.js';
-import { __dirname } from '../utils.js';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
+const __dirname = path.resolve(); 
 
-const productManager =  new ProductManager(__dirname + '/data/product.json');
+const cartsFilePath = path.join(__dirname, 'src', 'data', 'carts.json');
+const productsFilePath = path.join(__dirname, 'src', 'data', 'products.json');
 
+const getCarts = () => {
+    const data = fs.readFileSync(cartsFilePath);
+    return JSON.parse(data);
+};
 
-router.get("/:cid", (req, res) => {
+const getProducts = () => {
+    const data = fs.readFileSync(productsFilePath);
+    return JSON.parse(data);
+};
 
-})
-router.post("/", async (req, res) => {
+router.post('/', (req, res) => {
+    const carts = getCarts();
+    const newCart = {
+        id: carts.length ? carts[carts.length - 1].id + 1 : 1,
+        products: []
+    };
+    carts.push(newCart);
+    fs.writeFileSync(cartsFilePath, JSON.stringify(carts, null, 2));
+    res.status(201).json(newCart);
+});
 
-})
+router.get('/:cid', (req, res) => {
+    const carts = getCarts();
+    const cart = carts.find(c => c.id === parseInt(req.params.cid));
+    if (cart) {
+        res.json(cart.products);
+    } else {
+        res.status(404).send('Carrito no encontrado');
+    }
+});
 
-router.post("/:cid/product/:pid", async (req, res) => {
-    const { cid, pid } = req.params;
+router.post('/:cid/product/:pid', (req, res) => {
+    const carts = getCarts();
+    const products = getProducts();
+    const cartIndex = carts.findIndex(c => c.id === parseInt(req.params.cid));
+    if (cartIndex >= 0) {
+        const cart = carts[cartIndex];
+        const productIndex = cart.products.findIndex(p => p.product === parseInt(req.params.pid));
+        const productExists = products.find(p => p.id === parseInt(req.params.pid));
 
-    //mi metodo cartManager.addProductOnCart
-})
+        if (productExists) {
+            if (productIndex >= 0) {
+                cart.products[productIndex].quantity += 1;
+            } else {
+                cart.products.push({ product: parseInt(req.params.pid), quantity: 1 });
+            }
+            fs.writeFileSync(cartsFilePath, JSON.stringify(carts, null, 2));
+            res.json(cart);
+        } else {
+            res.status(404).send('Producto no encontrado');
+        }
+    } else {
+        res.status(404).send('Carrito no encontrado');
+    }
+});
 
 export default router;

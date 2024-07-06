@@ -14,10 +14,8 @@ app.use('/api/carts', cartsRouter);
 const productManager =  new ProductManager(__dirname + '/data/product.json');
 
 app.post('/', async (req, res)=>{
-    //sacar los datos del producto desde el objeto REQUEST (req)
     const newProduct = req.body
     console.log("new product", newProduct)
-    //agregar validaciones en caso de que un producto no tenga todos los campos
     let ifValidate = await productManager.validateProduct(newProduct)
     console.log("ifValidate", ifValidate)
     if (ifValidate){

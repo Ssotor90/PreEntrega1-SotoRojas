@@ -1,48 +1,69 @@
 import express from 'express';
-import ProductManager from '../class/productManager.js';
-import { __dirname } from '../utils.js';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
-const productManager =  new ProductManager(__dirname + '/data/product.json');
+const __dirname = path.resolve(); 
 
+const productsFilePath = path.join(__dirname, 'src', 'data', 'products.json');
 
-router.get("/", async (req, res) => {
-    console.log("get")
-    const productList = await productManager.getProductList();
-    res.status(201).json({ payload: productList })
-})
-router.get("/:pid", async (req, res) => {
-    const { id } = req.params
+const getProducts = () => {
+    const data = fs.readFileSync(productsFilePath);
+    return JSON.parse(data);
+};
 
-    const productFind = await productManager.getProductById(id)
+router.get('/', (req, res) => {
+    const products = getProducts();
+    const limit = req.query.limit ? parseInt(req.query.limit) : products.length;
+    res.json(products.slice(0, limit));
+});
 
-    res.status(201).json({ resultado: productFind })
-
-})
-router.post("/", async (req, res) => {
-
-    //sacar los datos del producto desde el objeto REQUEST (req)
-    const newProduct = req.body
-    console.log("new product", newProduct)
-    let ifValidate = await productManager.validateProduct(newProduct)
-    console.log("ifValidate", ifValidate)
-    if (ifValidate){
-        await productManager.addProduct(newProduct)
-    res.status(201).json({ message: 'Añadido!' })
+router.get('/:pid', (req, res) => {
+    const products = getProducts();
+    const product = products.find(p => p.id === parseInt(req.params.pid));
+    if (product) {
+        res.json(product);
+    } else {
+        res.status(404).send('Producto no encontrado');
     }
-    else {
-    res.status(400).json({ message: 'Faltan campos!' })
+});
+
+router.post('/', (req, res) => {
+    const products = getProducts();
+    const newProduct = {
+        id: products.length ? products[products.length - 1].id + 1 : 1,
+        ...req.body,
+        status: req.body.status !== undefined ? req.body.status : true
+    };
+    products.push(newProduct);
+    fs.writeFileSync(productsFilePath, JSON.stringify(products, null, 2));
+    res.status(201).json(newProduct);
+});
+
+router.put('/:pid', (req, res) => {
+    const products = getProducts();
+    const productIndex = products.findIndex(p => p.id === parseInt(req.params.pid));
+    if (productIndex >= 0) {
+        const updatedProduct = { ...products[productIndex], ...req.body, id: products[productIndex].id };
+        products[productIndex] = updatedProduct;
+        fs.writeFileSync(productsFilePath, JSON.stringify(products, null, 2));
+        res.json(updatedProduct);
+    } else {
+        res.status(404).send('Producto no encontrado');
     }
-})
-router.put("/", async (req, res) => {
-    const { id } = req.params
-    const productoActualizar = req.body
+});
 
-    res.status(203).json({ message: 'Actualizando' })
-})
-router.delete("/", (req, res) => {
-
-})
+router.delete('/:pid', (req, res) => {
+    let products = getProducts();
+    const productIndex = products.findIndex(p => p.id === parseInt(req.params.pid));
+    if (productIndex >= 0) {
+        products = products.filter(p => p.id !== parseInt(req.params.pid));
+        fs.writeFileSync(productsFilePath, JSON.stringify(products, null, 2));
+        res.status(204).send();
+    } else {
+        res.status(404).send('Producto no encontrado');
+    }
+});
 
 export default router;

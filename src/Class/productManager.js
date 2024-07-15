@@ -1,60 +1,68 @@
-import fs from 'node:fs'
-import { title } from 'node:process';
+import fs from 'fs/promises';
 
 class ProductManager {
-    constructor(path){
-        this.path = path;
-        this.productList = [];
+    constructor(path) {
+    this.path = path;
     }
 
-    async getProductById(id){
-        await this.getProductList();
-
-        return this.productList.find(product => product.id == id);
+    async addProduct(product) {
+    const products = await this.getProducts();
+    if (!this.validateProduct(product)) {
+        throw new Error('Producto inválido');
+    }
+    const newProduct = {
+        id: this.generateId(products),
+        ...product,
+        status: product.status ?? true
+    };
+    products.push(newProduct);
+    await this.saveProducts(products);
+    return newProduct;
     }
 
-    async getProductList(){
-        const list = await fs.promises.readFile(this.path, 'utf-8')
-        this.productList = [...JSON.parse(list).data]
-        return [...this.productList]
+    validateProduct(product) {
+    const requiredFields = ['title', 'description', 'code', 'price', 'stock', 'category'];
+    return requiredFields.every(field => product[field] != null);
     }
 
-    async addProduct(product){
-        await this.getProductList();
-        const newProduct = {
-            id: 1000,
-            title: product.title,
-            description: product.description,
-            code: product.code,
-            price: product.price,
-            status: product.status,
-            stock: product.stock,
-            category: product.category,
-            thumbnails: product.thumbnails
-        }
-
-        this.productList.push(newProduct);
-        await fs.promises.writeFile(this.path, JSON.stringify({ data: this.productList }))
+    generateId(products) {
+    return products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
     }
 
-    async validateProduct(product){
-        let ifValidate = true 
-        if (product.title == null) ifValidate = false
-        if (product.description == null) ifValidate = false
-        if (product.code == null) ifValidate = false
-        if (product.price == null) ifValidate = false
-        if (product.status == null) ifValidate = false
-        if (product.stock == null) ifValidate = false
-        if (product.category == null) ifValidate = false
-        if (product.thumbnails == null) ifValidate = false
-        console.log("validateProduct", ifValidate)
-        return ifValidate
+    async getProducts() {
+    try {
+        const data = await fs.readFile(this.path, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        return [];
+    }
     }
 
+    async saveProducts(products) {
+    await fs.writeFile(this.path, JSON.stringify(products, null, 2));
+    }
 
+    async updateProduct(id, updatedProduct) {
+    const products = await this.getProducts();
+    const index = products.findIndex(product => product.id === id);
+    if (index === -1) {
+        throw new Error('Producto no encontrado');
+    }
+    products[index] = { ...products[index], ...updatedProduct };
+    await this.saveProducts(products);
+    return products[index];
+    }
+
+    async deleteProduct(id) {
+    const products = await this.getProducts();
+    const index = products.findIndex(product => product.id === id);
+    if (index === -1) {
+        throw new Error('Producto no encontrado');
+    }
+    const deletedProduct = products.splice(index, 1);
+    await this.saveProducts(products);
+    return deletedProduct[0];
+    }
 }
 
-
-
-
-export default ProductManager
+export default ProductManager;

@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { create } from 'express-handlebars'; // Importa create desde express-handlebars
+import { create } from 'express-handlebars';
 import { Server } from 'socket.io';
 import http from 'http';
 
@@ -12,40 +12,37 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Configuración de Handlebars
-const hbs = create(); // Usa create para configurar el motor de plantillas
+const hbs = create(); 
 app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rutas
+
 app.get('/', (req, res) => {
-  res.render('home');
+    res.render('home');
 });
 
 app.get('/realtimeproducts', (req, res) => {
-  res.render('realTimeProducts');
+    res.render('realTimeProducts');
 });
 
-// WebSocket connection
 io.on('connection', (socket) => {
-  console.log('A user connected');
-  
-  // Handle product updates
-  socket.on('updateProducts', (products) => {
-    io.emit('productList', products);
-  });
+    console.log('Usuario conectado');
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
-  });
+    socket.on('updateProducts', (products) => {
+    io.emit('productList', products);
+});
+
+socket.on('disconnect', () => {
+    console.log('Usuario desconectado');
+});
 });
 
 server.listen(8080, () => {
-  console.log(`Servidor ON`);
+    console.log(`Servidor ON`);
 });

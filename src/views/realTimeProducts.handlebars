@@ -6,36 +6,57 @@
     <title>Real-Time Products</title>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const socket = io();
-        socket.on('productList', (products) => {
-        const productList = document.getElementById('product-list');
-        productList.innerHTML = '';
-        products.forEach(product => {
-            const li = document.createElement('li');
-            li.textContent = `${product.name} - ${product.price}`;
-            productList.appendChild(li);
-        });
-        });
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
 
-        document.getElementById('product-form').addEventListener('submit', (event) => {
-        event.preventDefault();
-        const name = event.target.name.value;
-        const price = event.target.price.value;
-        socket.emit('updateProducts', { name, price });
-        event.target.reset();
+            // Handle product form submission
+            document.getElementById('productForm').addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(event.target);
+                const product = Object.fromEntries(formData.entries());
+                socket.emit('nuevo-producto', product);
+                event.target.reset();
+            });
+
+            // Handle real-time updates
+            socket.on('realtime', (products) => {
+                const productContainer = document.getElementById('productList');
+                productContainer.innerHTML = '';
+                products.forEach(product => {
+                    const productCard = document.createElement('div');
+                    productCard.classList.add('product-card');
+                    productCard.innerHTML = `
+                        <h3>${product.title}</h3>
+                        <p>Description: ${product.description}</p>
+                        <p>Code: ${product.code}</p>
+                        <p>Price: ${product.price}</p>
+                        <p>Status: ${product.status}</p>
+                        <p>Stock: ${product.stock}</p>
+                        <p>Category: ${product.category}</p>
+                        <button onclick="deleteProduct(${product.id})">Delete</button>
+                    `;
+                    productContainer.appendChild(productCard);
+                });
+            });
+
+            window.deleteProduct = (id) => {
+                socket.emit('eliminar-producto', id);
+            }
         });
-    });
     </script>
 </head>
 <body>
-    <h1>Lista de productos</h1>
-    <form id="product-form">
-    <input type="text" name="name" placeholder="Nombre de producto" required>
-    <input type="number" name="price" placeholder="Precio" required>
-    <button type="submit">Agregar producto</button>
+    <h1>Real-Time Products</h1>
+    <form id="productForm">
+        <input type="text" name="title" placeholder="Title" required>
+        <input type="text" name="description" placeholder="Description" required>
+        <input type="text" name="code" placeholder="Code" required>
+        <input type="number" name="price" placeholder="Price" required>
+        <input type="number" name="stock" placeholder="Stock" required>
+        <input type="text" name="category" placeholder="Category" required>
+        <label>Status: <input type="checkbox" name="status" checked></label>
+        <button type="submit">Add Product</button>
     </form>
-    <ul id="product-list"></ul>
-    <a href="/">Volver</a>
+    <div id="productList"></div>
 </body>
 </html>

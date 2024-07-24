@@ -1,44 +1,51 @@
 import express from 'express';
-import ProductManager from './class/productManager.js';
-import { __dirname } from './utils.js';
-import productsRouter from './routes/products.js'
-import cartsRouter from './routes/carts.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { create } from 'express-handlebars'; // Importa create desde express-handlebars
+import { Server } from 'socket.io';
+import http from 'http';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const router = express.Router();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Configuración de Handlebars
+const hbs = create(); // Usa create para configurar el motor de plantillas
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
+app.set('views', path.join(__dirname, 'views'));
+
+// Middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended:true }));
-app.use('/api/products', productsRouter);
-app.use('/api/carts', cartsRouter);
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const productManager =  new ProductManager(__dirname + '/data/product.json');
+// Rutas
+app.get('/', (req, res) => {
+  res.render('home');
+});
 
-app.post('/', async (req, res)=>{
-    const newProduct = req.body
-    console.log("new product", newProduct)
-    let ifValidate = await productManager.validateProduct(newProduct)
-    console.log("ifValidate", ifValidate)
-    if (ifValidate){
-        await productManager.addProduct(newProduct)
-    res.status(201).json({ message: 'Añadido!' })
-    }
-    else {
-    res.status(400).json({ message: 'Faltan campos!' })
-    }
-})
+app.get('/realtimeproducts', (req, res) => {
+  res.render('realTimeProducts');
+});
 
-app.put('/:id', (req, res) => {
+// WebSocket connection
+io.on('connection', (socket) => {
+  console.log('A user connected');
+  
+  // Handle product updates
+  socket.on('updateProducts', (products) => {
+    io.emit('productList', products);
+  });
 
-})
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
 
-app.get('/', async (req, res)=> {
-
-})
-
-app.get('/:id', async (req, res) => {
-
-})
-
-app.listen(8080, () =>{
-    console.log("servidor ON")
-})
+server.listen(8080, () => {
+  console.log(`Servidor ON`);
+});

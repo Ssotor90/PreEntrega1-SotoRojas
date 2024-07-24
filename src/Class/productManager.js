@@ -1,24 +1,32 @@
 import fs from 'fs/promises';
-import path from 'path';
 
 class ProductManager {
-    constructor(filePath) {
-        this.path = filePath;
+    constructor(path) {
+        this.path = path;
     }
 
     async addProduct(product) {
         const products = await this.getProducts();
+        
         if (!this.validateProduct(product)) {
             throw new Error('Producto inválido');
         }
-        const newProduct = {
-            id: this.generateId(products),
-            ...product,
-            status: product.status ?? true
-        };
-        products.push(newProduct);
+
+        if (product.id) {
+            const index = products.findIndex(p => p.id === product.id);
+            if (index !== -1) {
+                products[index] = { ...products[index], ...product };
+            } else {
+                product.id = this.generateId(products);
+                products.push(product);
+            }
+        } else {
+            product.id = this.generateId(products);
+            products.push(product);
+        }
+
         await this.saveProducts(products);
-        return newProduct;
+        return product;
     }
 
     validateProduct(product) {
@@ -35,37 +43,12 @@ class ProductManager {
             const data = await fs.readFile(this.path, 'utf-8');
             return JSON.parse(data);
         } catch (error) {
-            // Si el archivo no existe, devuelve un array vacío
-            if (error.code === 'ENOENT') {
-                return [];
-            }
-            throw error;
+            return [];
         }
     }
 
     async saveProducts(products) {
-        try {
-            await fs.writeFile(this.path, JSON.stringify(products, null, 2));
-        } catch (error) {
-            // Si el archivo no existe, crea la carpeta y el archivo
-            if (error.code === 'ENOENT') {
-                await fs.mkdir(path.dirname(this.path), { recursive: true });
-                await fs.writeFile(this.path, JSON.stringify(products, null, 2));
-            } else {
-                throw error;
-            }
-        }
-    }
-
-    async updateProduct(id, updatedProduct) {
-        const products = await this.getProducts();
-        const index = products.findIndex(product => product.id === id);
-        if (index === -1) {
-            throw new Error('Producto no encontrado');
-        }
-        products[index] = { ...products[index], ...updatedProduct };
-        await this.saveProducts(products);
-        return products[index];
+        await fs.writeFile(this.path, JSON.stringify(products, null, 2));
     }
 
     async deleteProduct(id) {

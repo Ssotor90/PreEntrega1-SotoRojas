@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import expressHandlebars from 'express-handlebars';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import ProductManager from './class/productManager.js';
+import ProductManager from './Class/productManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,7 +34,15 @@ io.on('connection', async (socket) => {
 
     socket.on('nuevo-producto', async (product) => {
         try {
-            await productManager.addProduct(product);
+            const products = await productManager.getProducts();
+            const existingProduct = products.find(p => p.id === product.id);
+
+            if (existingProduct) {
+                await productManager.updateProduct(product.id, product);
+            } else {
+                await productManager.addProduct(product);
+            }
+
             const updatedProductsList = await productManager.getProducts();
             io.emit('realtime', updatedProductsList);
         } catch (error) {
@@ -55,5 +63,5 @@ io.on('connection', async (socket) => {
 
 const PORT = 8080;
 httpServer.listen(PORT, () => {
-    console.log(`Servidor esta funcionando en puerto ${PORT}`);
+    console.log(`Servidor está funcionando en puerto ${PORT}`);
 });

@@ -51,6 +51,22 @@ class ProductManager {
         await fs.writeFile(this.path, JSON.stringify(products, null, 2));
     }
 
+    async updateProduct(id, updates) {
+        const products = await this.getProducts();
+        const index = products.findIndex(p => p.id === id);
+    
+        if (index === -1) {
+            throw new Error('Producto no encontrado');
+        }
+    
+        const updatedProduct = { ...products[index], ...updates };
+    
+        products[index] = updatedProduct;
+    
+        await this.saveProducts(products);
+        return updatedProduct;
+    }
+    
     async deleteProduct(id) {
         const products = await this.getProducts();
         const index = products.findIndex(product => product.id === id);
